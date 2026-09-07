@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from .midi_writer import build_midi_multi
+from .ocarina_pdf import render_ocarina_tab_pdf
 from .parser import MMLParseError
 
 
@@ -32,9 +33,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "-o", "--output",
-        required=True,
         type=Path,
-        help="Output .mid file path.",
+        help="Output .mid file path. Required unless --ocarina-pdf is given.",
+    )
+    parser.add_argument(
+        "--ocarina-pdf",
+        dest="ocarina_pdf",
+        type=Path,
+        metavar="PATH",
+        help="Also (or instead) render the first input's melody as a 12-hole ocarina "
+        "fingering tab PDF. Ocarina tabs are single-voice, so only the first input's "
+        "melody part is used, transposed as needed to best fit the instrument's A4-F6 "
+        "range; notes still out of range after that are marked in red.",
     )
     parser.add_argument(
         "--program",
@@ -56,7 +66,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_arg_parser().parse_args(argv)
+    parser = build_arg_parser()
+    args = parser.parse_args(argv)
+
+    if not args.output and not args.ocarina_pdf:
+        parser.error("nothing to do: pass -o/--output, --ocarina-pdf, or both")
 
     try:
         mml_texts = [_read_mml(source) for source in args.inputs]
@@ -67,14 +81,30 @@ def main(argv: list[str] | None = None) -> int:
     programs = list(args.programs) if args.programs else [0] * len(mml_texts)
     if len(programs) < len(mml_texts):
         programs += [programs[-1]] * (len(mml_texts) - len(programs))
+    strip_check_note = not args.keep_check_note
 
-    try:
-        midi_file = build_midi_multi(mml_texts, programs, strip_check_note=not args.keep_check_note)
-    except MMLParseError as exc:
-        print(f"mml2midi: {exc}", file=sys.stderr)
-        return 1
+    if args.output:
+        try:
+            midi_file = build_midi_multi(mml_texts, programs, strip_check_note=strip_check_note)
+        except MMLParseError as exc:
+            print(f"mml2midi: {exc}", file=sys.stderr)
+            return 1
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    midi_file.save(args.output)
-    print(f"Wrote {args.output}")
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        midi_file.save(args.output)
+        print(f"Wrote {args.output}")
+
+    if args.ocarina_pdf:
+        title = Path(args.inputs[0]).stem if Path(args.inputs[0]).is_file() else "Ocarina Tab"
+        args.ocarina_pdf.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            render_ocarina_tab_pdf(
+                mml_texts[0], args.ocarina_pdf, title=title, strip_check_note=strip_check_note,
+            )
+        except MMLParseError as exc:
+            print(f"mml2midi: {exc}", file=sys.stderr)
+            return 1
+
+        print(f"Wrote {args.ocarina_pdf}")
+
     return 0
