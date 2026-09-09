@@ -49,10 +49,14 @@ exact arithmetic).
 
 ## Ocarina tab fingering data
 
-`--ocarina-pdf` targets a real 12-hole ("English pendant") ocarina in the
-key of C, which covers 21 chromatic notes, A4-F6. The hole numbering and
-the note-to-fingering table in `ocarina.py` aren't guesswork: they come
-from the `GLYPH_MAP`/`KEY_MAPS` fingering data in Mathias Panzenböck's
+`--ocarina-pdf` targets one of two real instruments in the key of C,
+selected with `--ocarina12` (the default) or `--ocarina6`. Neither
+fingering table is guesswork -- both were transcribed from real published
+charts.
+
+**12-hole** ("English pendant"), 21 chromatic notes, A4-F6. The hole
+numbering and note-to-fingering table in `ocarina.py` come from the
+`GLYPH_MAP`/`KEY_MAPS` fingering data in Mathias Panzenböck's
 [Open 12 Hole Ocarina font and tab creator](https://github.com/panzi/ocarina_tabs)
 (font/data licensed under the SIL Open Font License 1.1 -- per that
 license's own terms, a document produced *using* the font/data, like the
@@ -62,6 +66,21 @@ published 12-hole "Key of C" fingering charts. The on-page ocarina body
 silhouette is also adapted from Panzenböck's project (its real outline,
 not a freehand approximation), under the same license terms.
 
+**6-hole**, a small pendant instrument reaching 17 chromatic notes (an
+octave plus a major third). The fingering table -- including which two
+notes need a half-covered hole -- was transcribed directly from
+[OcarinaSongbook.com's Six Hole Ocarina Fingering Chart](https://ocarinasongbook.com/fingering-charts/six-hole/)
+by reading its fingering diagrams pixel by pixel, not from an automated
+text extraction (which loses the half-covered-hole distinction). That
+chart doesn't name an absolute octave -- small pendant ocarinas vary by
+maker -- so this module's 17-note range is labeled C5-E6 as a reasonable
+default; the *pattern* of which holes to cover for the Nth note of the
+scale is what's authoritative, not the exact octave number. The 6-hole
+body silhouette is this project's own simple original drawing (a small
+rounded pendant shape with the mouthpiece pointing down toward the two
+lower holes), not traced from any source.
+
 A song is transposed by whichever octave shift fits the most notes into
-A4-F6; any note still outside that range afterward is drawn in red, since
-one physical ocarina simply can't play everything a full MML score can.
+the target instrument's range; any note still outside that range
+afterward is drawn in red, since one physical ocarina simply can't play
+everything a full MML score can.

@@ -34,17 +34,31 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-o", "--output",
         type=Path,
-        help="Output .mid file path. Required unless --ocarina-pdf is given.",
+        help="Output .mid file path. Required unless --ocarina6/--ocarina12 is given.",
     )
     parser.add_argument(
-        "--ocarina-pdf",
-        dest="ocarina_pdf",
+        "--ocarina6",
         type=Path,
         metavar="PATH",
-        help="Also (or instead) render the first input's melody as a 12-hole ocarina "
-        "fingering tab PDF. Ocarina tabs are single-voice, so only the first input's "
-        "melody part is used, transposed as needed to best fit the instrument's A4-F6 "
-        "range; notes still out of range after that are marked in red.",
+        help="Also (or instead) render the first input's melody as a 6-hole ocarina "
+        "fingering tab PDF (a small pendant ocarina, C5-E6) at PATH. Ocarina tabs are "
+        "single-voice, so only the first input's melody part is used, transposed as "
+        "needed to best fit the instrument's range; notes still out of range after that "
+        "are marked in red. Combine with --ocarina12 to render both.",
+    )
+    parser.add_argument(
+        "--ocarina12",
+        type=Path,
+        metavar="PATH",
+        help="Same as --ocarina6, but for a 12-hole ocarina ('English pendant', A4-F6).",
+    )
+    parser.add_argument(
+        "--no-octave-fold",
+        dest="fold_octaves",
+        action="store_false",
+        help="For --ocarina6/--ocarina12: don't shift individual out-of-range notes by "
+        "whole octaves to make them playable (drawn in blue by default). Leaves them "
+        "unplayable (drawn in red) instead.",
     )
     parser.add_argument(
         "--program",
@@ -69,8 +83,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
-    if not args.output and not args.ocarina_pdf:
-        parser.error("nothing to do: pass -o/--output, --ocarina-pdf, or both")
+    if not args.output and not args.ocarina6 and not args.ocarina12:
+        parser.error("nothing to do: pass -o/--output, --ocarina6/--ocarina12, or a combination")
 
     try:
         mml_texts = [_read_mml(source) for source in args.inputs]
@@ -94,17 +108,21 @@ def main(argv: list[str] | None = None) -> int:
         midi_file.save(args.output)
         print(f"Wrote {args.output}")
 
-    if args.ocarina_pdf:
-        title = Path(args.inputs[0]).stem if Path(args.inputs[0]).is_file() else "Ocarina Tab"
-        args.ocarina_pdf.parent.mkdir(parents=True, exist_ok=True)
+    title = Path(args.inputs[0]).stem if Path(args.inputs[0]).is_file() else "Ocarina Tab"
+    for ocarina_path, hole_count in ((args.ocarina6, 6), (args.ocarina12, 12)):
+        if not ocarina_path:
+            continue
+
+        ocarina_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             render_ocarina_tab_pdf(
-                mml_texts[0], args.ocarina_pdf, title=title, strip_check_note=strip_check_note,
+                mml_texts[0], ocarina_path, title=title, strip_check_note=strip_check_note,
+                hole_count=hole_count, fold_octaves=args.fold_octaves,
             )
         except MMLParseError as exc:
             print(f"mml2midi: {exc}", file=sys.stderr)
             return 1
 
-        print(f"Wrote {args.ocarina_pdf}")
+        print(f"Wrote {ocarina_path}")
 
     return 0
